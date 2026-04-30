@@ -76,7 +76,11 @@ class App {
   _onBallHover() {
     if (this.state === State.RUNNING || this.state === State.PAUSED) {
       this._showTimerMenu();
-    } else if (this.state !== State.TIMER_MENU) {
+    } else if (
+      this.state !== State.TIMER_MENU &&
+      this.state !== State.MENU_LEVEL_1 &&
+      this.state !== State.MENU_LEVEL_2
+    ) {
       this._showLevel1Menu();
     }
   }
@@ -98,14 +102,19 @@ class App {
   }
 
   _onFanLeave() {
-    if (this.state === State.MENU_LEVEL_1 || this.state === State.MENU_LEVEL_2) {
-      this.fanMenu.hide();
-      this.state = this.selectedCategoryId ? State.SELECTED : State.IDLE;
-    } else if (this.state === State.TIMER_MENU) {
-      this.fanMenu.hide();
-      this.state = this._wasPausedBeforeMenu ? State.PAUSED : State.RUNNING;
-    }
-    this._updateBallDisplay();
+    setTimeout(() => {
+      const ball = document.getElementById('ball');
+      if (ball && ball.matches(':hover')) return;
+
+      if (this.state === State.MENU_LEVEL_1 || this.state === State.MENU_LEVEL_2) {
+        this.fanMenu.hide();
+        this.state = this.selectedCategoryId ? State.SELECTED : State.IDLE;
+      } else if (this.state === State.TIMER_MENU) {
+        this.fanMenu.hide();
+        this.state = this._wasPausedBeforeMenu ? State.PAUSED : State.RUNNING;
+      }
+      this._updateBallDisplay();
+    }, 100);
   }
 
   _onBallClick() {
