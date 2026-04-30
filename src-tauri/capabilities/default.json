@@ -1,0 +1,9 @@
+{
+  "identifier": "default",
+  "description": "Default capability with window dragging",
+  "windows": ["*"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging"
+  ]
+}
