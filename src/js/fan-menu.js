@@ -29,8 +29,11 @@ export class FanMenu {
     if (totalItems === 0) return;
 
     const arcAngle = 360 / totalItems;
-    // Position the last item (Dashboard or Back) centered at 6 o'clock (90°)
-    const startAngle = 90 - (totalItems - 1) * arcAngle;
+    // With back label: put the last item (Dashboard/Back) at 6 o'clock (90°)
+    // Without back label: start from 3 o'clock (0°) so pairs go left-right
+    const startAngle = backLabel
+      ? 90 - (totalItems - 1) * arcAngle
+      : 0;
 
     const size = FAN_OUTER_R * 2;
     this.svg = this._createSvg(size);
