@@ -1,5 +1,6 @@
 import { api } from './api.js';
 import { FanMenu } from './fan-menu.js';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 const State = {
   IDLE: 'idle',
@@ -66,6 +67,12 @@ class App {
 
     const fan = document.getElementById('fan-container');
     fan.addEventListener('mouseleave', () => this._onFanLeave());
+
+    this.ball.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        getCurrentWindow().startDragging();
+      }
+    });
 
     this.ball.addEventListener('click', (e) => {
       e.stopPropagation();
