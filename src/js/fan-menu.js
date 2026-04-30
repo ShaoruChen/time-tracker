@@ -63,11 +63,16 @@ export class FanMenu {
       this.container.classList.add('has-selection');
       this._updateSelectionVisual();
     }
+
+    this.onShow?.();
   }
 
   hide() {
     this.container.classList.remove('visible', 'has-selection');
-    setTimeout(() => this.clear(), 200);
+    setTimeout(() => {
+      this.clear();
+      this.onHide?.();
+    }, 200);
   }
 
   _createSvg(size) {

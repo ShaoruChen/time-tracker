@@ -1,6 +1,7 @@
 import { api } from './api.js';
 import { FanMenu } from './fan-menu.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { PhysicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
 
 const State = {
   IDLE: 'idle',
@@ -24,8 +25,11 @@ class App {
     this.ball = document.getElementById('ball');
     this.ballLabel = document.getElementById('ball-label');
     this.fanMenu = new FanMenu('fan-container');
+    this._windowExpanded = true; // window starts at 320x320
 
     this.fanMenu.onSectorClick = (id, isBack) => this._onSectorClick(id, isBack);
+    this.fanMenu.onShow = () => this._expandWindow();
+    this.fanMenu.onHide = () => this._shrinkWindow();
 
     this._setupEventListeners();
     this._init();
@@ -55,6 +59,8 @@ class App {
     if (this.state === State.IDLE) {
       this._updateBallDisplay();
     }
+    // Always shrink on startup — fan menu starts closed
+    this._shrinkWindow();
   }
 
   _setupEventListeners() {
@@ -122,6 +128,36 @@ class App {
       }
       this._updateBallDisplay();
     }, 100);
+  }
+
+  async _expandWindow() {
+    if (this._windowExpanded) return;
+    this._windowExpanded = true;
+    try {
+      const win = getCurrentWindow();
+      const pos = await win.outerPosition();
+      const offset = (320 - 80) / 2;
+      await win.setPosition(new PhysicalPosition(
+        Math.max(0, pos.x - offset),
+        Math.max(0, pos.y - offset),
+      ));
+      await win.setSize(new PhysicalSize(320, 320));
+    } catch (e) { /* ignore */ }
+  }
+
+  async _shrinkWindow() {
+    if (!this._windowExpanded) return;
+    this._windowExpanded = false;
+    try {
+      const win = getCurrentWindow();
+      const pos = await win.outerPosition();
+      const offset = (320 - 80) / 2;
+      await win.setSize(new PhysicalSize(80, 80));
+      await win.setPosition(new PhysicalPosition(
+        pos.x + offset,
+        pos.y + offset,
+      ));
+    } catch (e) { /* ignore */ }
   }
 
   _onBallClick() {
