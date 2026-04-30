@@ -178,12 +178,11 @@ class App {
       name: c.name,
       color: c.color,
     }));
-    items.push({
-      id: '__dashboard__',
-      name: 'Dashboard',
-      color: '#888',
+    this.fanMenu.show(items, {
+      selectedId: this.selectedCategoryId,
+      backLabel: 'Dashboard',
+      backColor: '#888',
     });
-    this.fanMenu.show(items, { selectedId: this.selectedCategoryId });
 
     if (this.selectedCategoryId && !this.selectedTaskId) {
       this.fanMenu.highlightSelected(this.selectedCategoryId);
@@ -231,7 +230,7 @@ class App {
 
   async _onSectorClick(id, isBack) {
     if (this.state === State.MENU_LEVEL_1) {
-      if (id === '__dashboard__') {
+      if (isBack) {
         try { await api.openDashboard(); } catch (e) { /* ignore */ }
         return;
       }
