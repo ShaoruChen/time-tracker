@@ -1,0 +1,23 @@
+#fan-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+#fan-container.visible {
+  opacity: 1;
+}
+
+#fan-container svg path {
+  transition: opacity 0.2s ease, filter 0.15s ease;
+}
+
+#fan-container svg text {
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
