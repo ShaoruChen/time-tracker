@@ -193,6 +193,19 @@ function toggleConfigEditor() {
 
 let _editorConfig = null;
 
+// Theme palettes
+const THEMES = {
+  indigo: ['#667eea', '#45B7D1', '#4ECDC4', '#a8e063', '#f5a623', '#f5576c'],
+  sunset: ['#f5576c', '#e8965b', '#f5a623', '#f093fb', '#c44d6e', '#ffd89b'],
+  aurora: ['#7c3aed', '#06b6d4', '#10b981', '#6366f1', '#f59e0b', '#ec4899'],
+};
+let currentTheme = 'indigo';
+
+function _themeColor(index) {
+  const colors = THEMES[currentTheme];
+  return colors[index % colors.length];
+}
+
 function _genId(prefix) {
   return prefix + '-' + Math.random().toString(36).slice(2, 8);
 }
@@ -203,9 +216,36 @@ async function loadConfigToEditor() {
     if (_editorConfig) {
       renderCategoryEditor(_editorConfig);
     }
+    // Highlight active theme based on loaded colors (check first category color)
+    const firstColor = _editorConfig?.categories?.[0]?.color;
+    if (firstColor) {
+      for (const [key, colors] of Object.entries(THEMES)) {
+        if (colors.includes(firstColor)) {
+          currentTheme = key;
+          break;
+        }
+      }
+    }
+    _updateThemeChips();
   } catch (err) {
     console.error('Failed to load config:', err);
   }
+}
+
+function _updateThemeChips() {
+  document.querySelectorAll('.theme-chip').forEach((chip) => {
+    chip.classList.toggle('active', chip.dataset.theme === currentTheme);
+  });
+}
+
+function _applyThemeColors() {
+  const cards = document.querySelectorAll('.category-card');
+  cards.forEach((card, i) => {
+    const color = _themeColor(i);
+    const colorInput = card.querySelector('.cat-color');
+    if (colorInput) colorInput.value = color;
+    card.style.borderLeftColor = color;
+  });
 }
 
 function renderCategoryEditor(config) {
@@ -427,11 +467,20 @@ window.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('category-editor');
     const existing = container.querySelectorAll('.category-card');
     const card = _createCategoryCard(
-      { id: _genId('cat'), name: '', color: '#667eea', children: [] },
+      { id: _genId('cat'), name: '', color: _themeColor(existing.length), children: [] },
       existing.length
     );
     container.appendChild(card);
     card.querySelector('.cat-name').focus();
+  });
+
+  // Theme switcher
+  document.getElementById('theme-options').addEventListener('click', (e) => {
+    const chip = e.target.closest('.theme-chip');
+    if (!chip) return;
+    currentTheme = chip.dataset.theme;
+    _updateThemeChips();
+    _applyThemeColors();
   });
 
   // Real-time color preview: update card border on color change
