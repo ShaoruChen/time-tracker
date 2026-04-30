@@ -18,8 +18,6 @@
         "url": "/index.html",
         "width": 320,
         "height": 320,
-        "x": 0,
-        "y": 0,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,

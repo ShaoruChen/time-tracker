@@ -6,6 +6,7 @@ mod timer;
 
 use db::Database;
 use std::sync::Mutex;
+use tauri::Manager;
 use timer::TimerState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -22,6 +23,24 @@ pub fn run() {
     tauri::Builder::default()
         .manage(Mutex::new(timer_state))
         .manage(database)
+        .setup(|app| {
+            let window = app.get_webview_window("ball").unwrap();
+            if let Ok(Some(monitor)) = window.primary_monitor() {
+                let screen = *monitor.size();
+                let win: tauri::PhysicalSize<u32> = window
+                    .outer_size()
+                    .unwrap_or(tauri::PhysicalSize {
+                        width: 320,
+                        height: 320,
+                    });
+                let x: i32 = (screen.width.saturating_sub(win.width + 20)) as i32;
+                let y: i32 = ((screen.height.saturating_sub(win.height)) / 2) as i32;
+                let _ = window.set_position(tauri::Position::Physical(
+                    tauri::PhysicalPosition { x, y },
+                ));
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::config_cmd::get_categories,
             commands::config_cmd::save_categories,
