@@ -187,21 +187,192 @@ header h1 {
   margin-bottom: 16px;
 }
 
-#config-textarea {
-  width: 100%;
-  font-family: "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 12px;
-  padding: 12px;
-  border: 1px solid #ddd;
+/* Category Editor */
+#category-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.category-card {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-left: 4px solid #667eea;
   border-radius: 8px;
-  resize: vertical;
-  background: #fafafa;
+  padding: 14px 16px;
+  position: relative;
+}
+
+.category-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.category-header label {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.category-header input[type="text"] {
+  padding: 5px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 120px;
+  flex: 1;
+  max-width: 200px;
+}
+
+.category-header input[type="text"]:focus {
+  border-color: #667eea;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(102,126,234,0.2);
+}
+
+.category-header .color-picker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.category-header input[type="color"] {
+  width: 32px;
+  height: 28px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.category-header input[type="color"]:focus {
+  border-color: #667eea;
+  outline: none;
+}
+
+.category-tasks {
+  margin-left: 8px;
+  margin-bottom: 8px;
+}
+
+.task-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 4px 0;
+}
+
+.task-row .task-index {
+  font-size: 12px;
+  color: #aaa;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.task-row input[type="text"] {
+  padding: 5px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  flex: 1;
+  max-width: 260px;
+}
+
+.task-row input[type="text"]:focus {
+  border-color: #667eea;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(102,126,234,0.15);
+}
+
+.btn-delete {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  color: #e74c3c;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-delete:hover {
+  background: #e74c3c;
+  color: #fff;
+  border-color: #e74c3c;
+}
+
+.category-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-add-task {
+  padding: 3px 12px;
+  border: 1px dashed #bbb;
+  border-radius: 6px;
+  background: transparent;
+  color: #888;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.btn-add-task:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.btn-delete-cat {
+  padding: 3px 12px;
+  border: 1px solid #fcc;
+  border-radius: 6px;
+  background: transparent;
+  color: #e74c3c;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.btn-delete-cat:hover {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.btn-add-category {
+  padding: 8px 20px;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  background: transparent;
+  color: #667eea;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.btn-add-category:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
 }
 
 .config-editor-buttons {
   display: flex;
   gap: 8px;
-  margin-top: 8px;
 }
 
 .config-editor-buttons button {

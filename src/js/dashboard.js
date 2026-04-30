@@ -191,24 +191,197 @@ function toggleConfigEditor() {
   }
 }
 
+let _editorConfig = null;
+
+function _genId(prefix) {
+  return prefix + '-' + Math.random().toString(36).slice(2, 8);
+}
+
 async function loadConfigToEditor() {
   try {
-    const config = await api.getCategories();
-    if (config) {
-      document.getElementById('config-textarea').value = JSON.stringify(config, null, 2);
+    _editorConfig = await api.getCategories();
+    if (_editorConfig) {
+      renderCategoryEditor(_editorConfig);
     }
   } catch (err) {
     console.error('Failed to load config:', err);
   }
 }
 
+function renderCategoryEditor(config) {
+  const container = document.getElementById('category-editor');
+  container.innerHTML = '';
+
+  (config.categories || []).forEach((cat, i) => {
+    container.appendChild(_createCategoryCard(cat, i));
+  });
+}
+
+function _createCategoryCard(cat, index) {
+  const card = document.createElement('div');
+  card.className = 'category-card';
+  card.style.borderLeftColor = cat.color || '#667eea';
+  card.dataset.catIndex = index;
+  card.dataset.catId = cat.id || _genId('cat');
+
+  card.innerHTML = `
+    <div class="category-header">
+      <label>名称</label>
+      <input type="text" class="cat-name" value="${_esc(cat.name)}" data-cat-index="${index}" />
+      <span class="color-picker-wrap">
+        <label>颜色</label>
+        <input type="color" class="cat-color" value="${cat.color}" data-cat-index="${index}" />
+      </span>
+    </div>
+    <div class="category-tasks" data-cat-index="${index}"></div>
+    <div class="category-actions">
+      <button class="btn-add-task" data-cat-index="${index}">+ 添加任务</button>
+      <button class="btn-delete-cat" data-cat-index="${index}">删除分类</button>
+    </div>
+  `;
+
+  const tasksContainer = card.querySelector('.category-tasks');
+  (cat.children || []).forEach((task, ti) => {
+    tasksContainer.appendChild(_createTaskRow(task.name, task.id, index, ti));
+  });
+
+  return card;
+}
+
+function _createTaskRow(name, taskId, catIndex, taskIndex) {
+  const row = document.createElement('div');
+  row.className = 'task-row';
+  row.dataset.catIndex = catIndex;
+  row.dataset.taskIndex = taskIndex;
+  row.dataset.taskId = taskId || _genId('task');
+  row.innerHTML = `
+    <span class="task-index">${taskIndex + 1}.</span>
+    <input type="text" class="task-name" value="${_esc(name)}" data-cat-index="${catIndex}" data-task-index="${taskIndex}" />
+    <button class="btn-delete" data-cat-index="${catIndex}" data-task-index="${taskIndex}" title="删除任务">&times;</button>
+  `;
+  return row;
+}
+
+function _esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Event delegation for add/delete actions
+document.addEventListener('click', (e) => {
+  const btnAddTask = e.target.closest('.btn-add-task');
+  const btnDeleteCat = e.target.closest('.btn-delete-cat');
+  const btnDelete = e.target.closest('.btn-delete');
+
+  if (btnAddTask) {
+    const ci = parseInt(btnAddTask.dataset.catIndex);
+    const tasksContainer = document.querySelector(`.category-tasks[data-cat-index="${ci}"]`);
+    const existingRows = tasksContainer.querySelectorAll('.task-row');
+    const row = _createTaskRow('', null, ci, existingRows.length);
+    tasksContainer.appendChild(row);
+    row.querySelector('.task-name').focus();
+    // Shift+Enter on task input adds the next task row
+    const input = row.querySelector('.task-name');
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        const allRows = tasksContainer.querySelectorAll('.task-row');
+        const row2 = _createTaskRow('', null, ci, allRows.length);
+        tasksContainer.appendChild(row2);
+        row2.querySelector('.task-name').focus();
+      }
+    });
+  }
+
+  if (btnDeleteCat) {
+    const ci = parseInt(btnDeleteCat.dataset.catIndex);
+    const card = document.querySelector(`.category-card[data-cat-index="${ci}"]`);
+    if (card) card.remove();
+    // Re-index remaining cards
+    _reindexCategories();
+  }
+
+  if (btnDelete) {
+    const ci = parseInt(btnDelete.dataset.catIndex);
+    const ti = parseInt(btnDelete.dataset.taskIndex);
+    const tasksContainer = document.querySelector(`.category-tasks[data-cat-index="${ci}"]`);
+    const row = tasksContainer.querySelector(`.task-row[data-task-index="${ti}"]`);
+    if (row) row.remove();
+    // Re-index task rows
+    _reindexTasks(ci);
+  }
+});
+
+// Re-index category cards after deletion
+function _reindexCategories() {
+  const cards = document.querySelectorAll('.category-card');
+  cards.forEach((card, i) => {
+    card.dataset.catIndex = i;
+    card.querySelectorAll('.cat-name, .cat-color, .btn-add-task, .btn-delete-cat, .category-tasks').forEach((el) => {
+      el.dataset.catIndex = i;
+    });
+  });
+}
+
+// Re-index task rows after deletion
+function _reindexTasks(catIndex) {
+  const tasksContainer = document.querySelector(`.category-tasks[data-cat-index="${catIndex}"]`);
+  if (!tasksContainer) return;
+  const rows = tasksContainer.querySelectorAll('.task-row');
+  rows.forEach((row, i) => {
+    row.dataset.taskIndex = i;
+    const numSpan = row.querySelector('.task-index');
+    if (numSpan) numSpan.textContent = (i + 1) + '.';
+    row.querySelectorAll('.task-name, .btn-delete').forEach((el) => {
+      el.dataset.taskIndex = i;
+    });
+  });
+}
+
+function collectConfig() {
+  const cards = document.querySelectorAll('.category-card');
+  const categories = [];
+
+  cards.forEach((card) => {
+    const nameInput = card.querySelector('.cat-name');
+    const colorInput = card.querySelector('.cat-color');
+    const name = (nameInput?.value || '').trim();
+    const color = colorInput?.value || '#667eea';
+    if (!name) return;
+
+    const catId = card.dataset.catId || _genId('cat');
+    const tasks = [];
+    const taskRows = card.querySelectorAll('.task-row');
+    taskRows.forEach((row) => {
+      const tNameInput = row.querySelector('.task-name');
+      const tName = (tNameInput?.value || '').trim();
+      if (!tName) return;
+
+      const taskId = row.dataset.taskId || _genId('task');
+      tasks.push({ id: taskId, name: tName });
+    });
+
+    categories.push({ id: catId, name, color, children: tasks });
+  });
+
+  return { version: 1, categories };
+}
+
 async function saveConfig() {
-  const textarea = document.getElementById('config-textarea');
   const errorDiv = document.getElementById('config-error');
   errorDiv.textContent = '';
 
   try {
-    const config = await api.validateCategoriesJson(textarea.value);
+    const config = collectConfig();
+    // Validation: ensure no empty names
+    if (config.categories.length === 0) {
+      errorDiv.textContent = '至少需要一个分类';
+      return;
+    }
+    for (const cat of config.categories) {
+      if (!cat.name) {
+        errorDiv.textContent = '分类名称不能为空';
+        return;
+      }
+    }
     await api.saveCategories(config);
     document.getElementById('config-editor').style.display = 'none';
     await refreshAll();
@@ -248,6 +421,26 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-save-config').addEventListener('click', saveConfig);
   document.getElementById('btn-export').addEventListener('click', exportCsv);
+
+  // Add new category
+  document.getElementById('btn-add-category').addEventListener('click', () => {
+    const container = document.getElementById('category-editor');
+    const existing = container.querySelectorAll('.category-card');
+    const card = _createCategoryCard(
+      { id: _genId('cat'), name: '', color: '#667eea', children: [] },
+      existing.length
+    );
+    container.appendChild(card);
+    card.querySelector('.cat-name').focus();
+  });
+
+  // Real-time color preview: update card border on color change
+  document.getElementById('category-editor').addEventListener('input', (e) => {
+    if (e.target.classList.contains('cat-color')) {
+      const card = e.target.closest('.category-card');
+      if (card) card.style.borderLeftColor = e.target.value;
+    }
+  });
 
   refreshAll();
 });
