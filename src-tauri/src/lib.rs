@@ -7,7 +7,7 @@ mod timer;
 use db::Database;
 use std::sync::Mutex;
 use tauri::Manager;
-use timer::TimerState;
+use timer::{TimerPhase, TimerState};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -41,6 +41,21 @@ pub fn run() {
             }
             Ok(())
         })
+        .on_menu_event(|app, event| {
+            if event.id().as_ref() == "quit_app" {
+                let timer = app.state::<Mutex<TimerState>>();
+                let db = app.state::<Database>();
+                if let Ok(mut t) = timer.lock() {
+                    if t.phase != TimerPhase::Idle {
+                        if let (Some(session), total_ms) = t.end() {
+                            let now = chrono::Utc::now().to_rfc3339();
+                            let _ = db.update_session_end(&session.id, &now, total_ms, "completed");
+                        }
+                    }
+                }
+                app.exit(0);
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             commands::config_cmd::get_categories,
             commands::config_cmd::save_categories,
@@ -59,6 +74,8 @@ pub fn run() {
             commands::dashboard_cmd::get_daily_summary,
             commands::dashboard_cmd::get_category_summary,
             commands::dashboard_cmd::export_csv,
+            commands::app_cmd::show_context_menu,
+            commands::app_cmd::quit_app,
         ])
         .run(tauri::generate_context!())
         .expect("启动应用失败");

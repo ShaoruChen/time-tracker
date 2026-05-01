@@ -61,6 +61,26 @@ header h1 {
   background: #5a6fd6;
 }
 
+#theme-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 0;
+}
+
+#theme-bar > label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  white-space: nowrap;
+}
+
+#theme-bar #theme-options {
+  display: flex;
+  gap: 6px;
+}
+
 #summary-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -185,25 +205,6 @@ header h1 {
 
 #config-editor {
   margin-bottom: 16px;
-}
-
-/* Theme Selector */
-.theme-selector {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  background: #f8f9ff;
-  border-radius: 8px;
-  flex-wrap: wrap;
-}
-
-.theme-selector label {
-  font-size: 12px;
-  color: #888;
-  font-weight: 600;
-  white-space: nowrap;
 }
 
 #theme-options {

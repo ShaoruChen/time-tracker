@@ -18,6 +18,24 @@
       </div>
     </header>
 
+    <section id="theme-bar">
+      <label>配色方案</label>
+      <div id="theme-options">
+        <button class="theme-chip active" data-theme="stellar">
+          <span class="theme-dot" style="background:#7880B0"></span>星辉
+        </button>
+        <button class="theme-chip" data-theme="ember">
+          <span class="theme-dot" style="background:#C09870"></span>余烬
+        </button>
+        <button class="theme-chip" data-theme="verdant">
+          <span class="theme-dot" style="background:#80A078"></span>青翠
+        </button>
+        <button class="theme-chip" data-theme="nocturne">
+          <span class="theme-dot" style="background:#A088B8"></span>夜曲
+        </button>
+      </div>
+    </section>
+
     <section id="summary-cards">
       <div class="card" id="card-today">
         <span class="card-label">今日</span>
@@ -53,20 +71,6 @@
         </div>
       </div>
       <div id="config-editor" style="display:none">
-        <div class="theme-selector">
-          <label>主题配色</label>
-          <div id="theme-options">
-            <button class="theme-chip active" data-theme="indigo">
-              <span class="theme-dot" style="background:#667eea"></span>靛蓝
-            </button>
-            <button class="theme-chip" data-theme="sunset">
-              <span class="theme-dot" style="background:#f5576c"></span>霞光
-            </button>
-            <button class="theme-chip" data-theme="aurora">
-              <span class="theme-dot" style="background:#7c3aed"></span>极光
-            </button>
-          </div>
-        </div>
         <div id="category-editor"></div>
         <button id="btn-add-category" class="btn-add-category">+ 添加分类</button>
         <div class="config-editor-buttons">

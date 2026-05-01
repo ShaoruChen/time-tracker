@@ -1,5 +1,6 @@
 use crate::config;
 use crate::models::CategoriesConfig;
+use tauri::Emitter;
 use tauri::State;
 use crate::timer::TimerState;
 
@@ -9,8 +10,13 @@ pub fn get_categories() -> Result<CategoriesConfig, String> {
 }
 
 #[tauri::command]
-pub fn save_categories(config: CategoriesConfig) -> Result<(), String> {
-    config::save_categories(&config)
+pub fn save_categories(
+    app: tauri::AppHandle,
+    config: CategoriesConfig,
+) -> Result<(), String> {
+    config::save_categories(&config)?;
+    let _ = app.emit("config-changed", ());
+    Ok(())
 }
 
 #[tauri::command]

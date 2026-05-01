@@ -112,7 +112,7 @@ function renderCategoryChart(data) {
 
   const labels = data.map((d) => d.category_name);
   const values = data.map((d) => d.total_ms);
-  const colors = ['#667eea', '#f5576c', '#45B7D1', '#4ECDC4', '#ffd89b', '#a8e063'];
+  const colors = THEMES[currentTheme] || THEMES['stellar'];
 
   categoryChart = new Chart(ctx, {
     type: 'doughnut',
@@ -193,13 +193,14 @@ function toggleConfigEditor() {
 
 let _editorConfig = null;
 
-// Theme palettes
+// Theme palettes — each spans light to dark within a cohesive family
 const THEMES = {
-  indigo: ['#667eea', '#45B7D1', '#4ECDC4', '#a8e063', '#f5a623', '#f5576c'],
-  sunset: ['#f5576c', '#e8965b', '#f5a623', '#f093fb', '#c44d6e', '#ffd89b'],
-  aurora: ['#7c3aed', '#06b6d4', '#10b981', '#6366f1', '#f59e0b', '#ec4899'],
+  stellar:  ['#9898C0', '#7880B0', '#6B6098', '#585088', '#484878', '#383060'],
+  ember:    ['#D0B090', '#C09870', '#A88050', '#906838', '#785028', '#603820'],
+  verdant:  ['#A0B898', '#80A078', '#689060', '#508050', '#407040', '#305828'],
+  nocturne: ['#B8A0C8', '#A088B8', '#8870A8', '#705890', '#584070', '#403058'],
 };
-let currentTheme = 'indigo';
+let currentTheme = 'stellar';
 
 function _themeColor(index) {
   const colors = THEMES[currentTheme];
@@ -474,13 +475,25 @@ window.addEventListener('DOMContentLoaded', () => {
     card.querySelector('.cat-name').focus();
   });
 
-  // Theme switcher
-  document.getElementById('theme-options').addEventListener('click', (e) => {
+  // Theme switcher — auto-saves to sync with ball window
+  document.getElementById('theme-options').addEventListener('click', async (e) => {
     const chip = e.target.closest('.theme-chip');
     if (!chip) return;
     currentTheme = chip.dataset.theme;
     _updateThemeChips();
     _applyThemeColors();
+    // Apply theme to in-memory config and auto-save
+    if (_editorConfig) {
+      _editorConfig.categories.forEach((cat, i) => {
+        cat.color = _themeColor(i);
+      });
+    }
+    try {
+      const config = _editorConfig || collectConfig();
+      if (config && config.categories.length > 0) {
+        await api.saveCategories(config);
+      }
+    } catch (err) { /* ignore */ }
   });
 
   // Real-time color preview: update card border on color change
@@ -490,6 +503,25 @@ window.addEventListener('DOMContentLoaded', () => {
       if (card) card.style.borderLeftColor = e.target.value;
     }
   });
+
+  // Pre-load config so theme changes work without opening editor
+  (async () => {
+    try {
+      _editorConfig = await api.getCategories();
+      if (_editorConfig) {
+        const firstColor = _editorConfig.categories?.[0]?.color;
+        if (firstColor) {
+          for (const [key, colors] of Object.entries(THEMES)) {
+            if (colors.includes(firstColor)) {
+              currentTheme = key;
+              break;
+            }
+          }
+        }
+        _updateThemeChips();
+      }
+    } catch (e) { /* ignore */ }
+  })();
 
   refreshAll();
 });

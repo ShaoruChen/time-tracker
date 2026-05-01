@@ -81,7 +81,7 @@ fn init_default_config(path: &PathBuf) -> Result<(), String> {
             crate::models::Category {
                 id: "cat-default".into(),
                 name: "工作".into(),
-                color: "#667eea".into(),
+                color: "#7880B0".into(),
                 children: vec![
                     crate::models::Task {
                         id: "task-code".into(),
@@ -100,7 +100,7 @@ fn init_default_config(path: &PathBuf) -> Result<(), String> {
             crate::models::Category {
                 id: "cat-study".into(),
                 name: "深度学习".into(),
-                color: "#45B7D1".into(),
+                color: "#6B6098".into(),
                 children: vec![
                     crate::models::Task {
                         id: "task-paper".into(),
@@ -115,7 +115,7 @@ fn init_default_config(path: &PathBuf) -> Result<(), String> {
             crate::models::Category {
                 id: "cat-rest".into(),
                 name: "休息".into(),
-                color: "#4ECDC4".into(),
+                color: "#585088".into(),
                 children: vec![],
             },
         ],

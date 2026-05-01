@@ -33,6 +33,10 @@ export const api = {
   getElapsed: () => safeInvoke('get_elapsed'),
   getTimerStatus: () => safeInvoke('get_timer_status'),
 
+  // App
+  showContextMenu: (x, y) => safeInvoke('show_context_menu', { x, y }),
+  quitApp: () => safeInvoke('quit_app'),
+
   // Dashboard
   openDashboard: () => safeInvoke('open_dashboard'),
   getSessions: (dateFrom, dateTo, categoryId) =>
