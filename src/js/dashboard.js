@@ -193,12 +193,12 @@ function toggleConfigEditor() {
 
 let _editorConfig = null;
 
-// Theme palettes — light to dark
+// Theme palettes — refined, elegant, lower saturation
 const THEMES = {
-  verdant:    ['#2D6A4F', '#E07A5F', '#F4A261', '#81B29A', '#52796F', '#E9C46A'],
-  terracotta: ['#E76F51', '#F4A261', '#E9C46A', '#264653', '#2A9D8F', '#E5989B'],
-  neon:       ['#C084FC', '#22D3EE', '#FB7185', '#34D399', '#FBBF24', '#F472B6'],
-  nocturne:   ['#6366F1', '#0EA5E9', '#D946EF', '#10B981', '#F59E0B', '#F43F5E'],
+  verdant:    ['#8EAE9A', '#A8BD98', '#C8B098', '#96B0A2', '#B2C2A8', '#A0A8C0'],
+  rosegold:   ['#C2887C', '#D4A472', '#B898A0', '#A8B098', '#C8A8B8', '#E0C098'],
+  mist:       ['#80A4B4', '#BC9E8C', '#94B0C0', '#C8B8A4', '#A0BCC8', '#B8C8D4'],
+  twilight:   ['#AC8CA4', '#C8B294', '#A294AC', '#D0C0B8', '#A89CC0', '#C2A6BA'],
 };
 let currentTheme = 'verdant';
 

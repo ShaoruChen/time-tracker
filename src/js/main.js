@@ -293,7 +293,7 @@ class App {
 
     this.fanMenu.show(items, {
       backLabel: '返回',
-      backColor: category.color,
+      backColor: '#888',
       selectedId: this.selectedTaskId,
     });
 

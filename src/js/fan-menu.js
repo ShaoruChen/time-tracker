@@ -1,10 +1,21 @@
 const FAN_OUTER_R = 150;
 const FAN_INNER_R = 42;
 
+function _darken(hex, amount) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const dr = Math.round(r * (1 - amount));
+  const dg = Math.round(g * (1 - amount));
+  const db = Math.round(b * (1 - amount));
+  return '#' + [dr, dg, db].map((v) => Math.max(0, v).toString(16).padStart(2, '0')).join('');
+}
+
 export class FanMenu {
   constructor(containerId) {
     this.container = document.getElementById(containerId);
     this.svg = null;
+    this.defs = null;
     this.sectors = [];
     this.onSectorClick = null;
     this.selectedId = null;
@@ -14,6 +25,7 @@ export class FanMenu {
     if (this.svg) {
       this.svg.remove();
       this.svg = null;
+      this.defs = null;
     }
     this.sectors = [];
     this.selectedId = null;
@@ -86,6 +98,10 @@ export class FanMenu {
     svg.style.transform = 'translate(-50%, -50%)';
     svg.style.overflow = 'visible';
     svg.style.pointerEvents = 'none';
+
+    this.defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    svg.appendChild(this.defs);
+
     return svg;
   }
 
@@ -99,14 +115,35 @@ export class FanMenu {
 
     const path = this._createWedgePath(cx, cy, FAN_INNER_R, FAN_OUTER_R, startA, endA);
 
+    // Create radial gradient for this sector — lighter center, richer edge
+    const baseColor = item.color || '#667eea';
+    const darkColor = _darken(baseColor, 0.2);
+    const gradId = 'g-' + item.id;
+    const grad = document.createElementNS('http://www.w3.org/2000/svg', 'radialGradient');
+    grad.setAttribute('id', gradId);
+    grad.setAttribute('cx', '50%');
+    grad.setAttribute('cy', '50%');
+    grad.setAttribute('r', '50%');
+    const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+    stop1.setAttribute('offset', '0%');
+    stop1.setAttribute('stop-color', baseColor);
+    stop1.setAttribute('stop-opacity', '0.8');
+    const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+    stop2.setAttribute('offset', '100%');
+    stop2.setAttribute('stop-color', darkColor);
+    stop2.setAttribute('stop-opacity', '0.95');
+    grad.appendChild(stop1);
+    grad.appendChild(stop2);
+    this.defs.appendChild(grad);
+
     const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     pathEl.setAttribute('d', path);
-    pathEl.setAttribute('fill', item.color || '#667eea');
-    pathEl.setAttribute('stroke', 'rgba(255,255,255,0.3)');
+    pathEl.setAttribute('fill', `url(#${gradId})`);
+    pathEl.setAttribute('stroke', 'rgba(255,255,255,0.25)');
     pathEl.setAttribute('stroke-width', '1.5');
     pathEl.setAttribute('data-id', item.id);
     if (isBack) {
-      pathEl.setAttribute('opacity', '0.6');
+      pathEl.setAttribute('opacity', '0.5');
       pathEl.classList.add('back-sector');
     }
     pathEl.style.cursor = 'pointer';
