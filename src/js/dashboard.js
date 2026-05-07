@@ -82,7 +82,7 @@ function renderDailyChart(data) {
       datasets: [{
         label: '小时',
         data: values,
-        backgroundColor: '#667eea',
+        backgroundColor: (THEMES[currentTheme] || THEMES['indigo'])[0],
         borderRadius: 4,
       }],
     },
@@ -112,7 +112,7 @@ function renderCategoryChart(data) {
 
   const labels = data.map((d) => d.category_name);
   const values = data.map((d) => d.total_ms);
-  const colors = ['#667eea', '#f5576c', '#45B7D1', '#4ECDC4', '#ffd89b', '#a8e063'];
+  const colors = THEMES[currentTheme] || THEMES['indigo'];
 
   categoryChart = new Chart(ctx, {
     type: 'doughnut',
@@ -210,21 +210,31 @@ function _genId(prefix) {
   return prefix + '-' + Math.random().toString(36).slice(2, 8);
 }
 
+async function initTheme() {
+  try {
+    const config = await api.getCategories();
+    if (config) {
+      const firstColor = config.categories?.[0]?.color;
+      if (firstColor) {
+        for (const [key, colors] of Object.entries(THEMES)) {
+          if (colors.includes(firstColor)) {
+            currentTheme = key;
+            break;
+          }
+        }
+      }
+    }
+    _updateThemeChips();
+  } catch (err) {
+    console.error('Failed to init theme:', err);
+  }
+}
+
 async function loadConfigToEditor() {
   try {
     _editorConfig = await api.getCategories();
     if (_editorConfig) {
       renderCategoryEditor(_editorConfig);
-    }
-    // Highlight active theme based on loaded colors (check first category color)
-    const firstColor = _editorConfig?.categories?.[0]?.color;
-    if (firstColor) {
-      for (const [key, colors] of Object.entries(THEMES)) {
-        if (colors.includes(firstColor)) {
-          currentTheme = key;
-          break;
-        }
-      }
     }
     _updateThemeChips();
   } catch (err) {
@@ -452,6 +462,7 @@ async function exportCsv() {
 // Init
 window.addEventListener('DOMContentLoaded', () => {
   setDefaultDates();
+  initTheme();
 
   document.getElementById('btn-refresh').addEventListener('click', refreshAll);
   document.getElementById('btn-edit-config').addEventListener('click', toggleConfigEditor);
@@ -474,13 +485,27 @@ window.addEventListener('DOMContentLoaded', () => {
     card.querySelector('.cat-name').focus();
   });
 
-  // Theme switcher
-  document.getElementById('theme-options').addEventListener('click', (e) => {
+  // Theme switcher — auto-saves to backend
+  document.getElementById('theme-options').addEventListener('click', async (e) => {
     const chip = e.target.closest('.theme-chip');
     if (!chip) return;
     currentTheme = chip.dataset.theme;
     _updateThemeChips();
     _applyThemeColors();
+
+    // Auto-save theme change to backend
+    try {
+      const config = _editorConfig || await api.getCategories();
+      if (config && config.categories) {
+        config.categories.forEach((cat, i) => {
+          cat.color = _themeColor(i);
+        });
+        await api.saveCategories(config);
+        _editorConfig = config;
+      }
+    } catch (err) { /* ignore */ }
+
+    await refreshAll();
   });
 
   // Real-time color preview: update card border on color change
