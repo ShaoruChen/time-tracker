@@ -2,7 +2,6 @@ import { api } from './api.js';
 import { FanMenu } from './fan-menu.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { PhysicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
-import { listen } from '@tauri-apps/api/event';
 
 const State = {
   IDLE: 'idle',
@@ -27,6 +26,8 @@ class App {
     this.ballLabel = document.getElementById('ball-label');
     this.fanMenu = new FanMenu('fan-container');
     this._windowExpanded = true; // window starts at 320x320
+    this._ballLeaveTimeout = null;
+    this._fanLeaveTimeout = null;
 
     this.fanMenu.onSectorClick = (id, isBack) => this._onSectorClick(id, isBack);
     this.fanMenu.onShow = () => this._expandWindow();
@@ -62,16 +63,6 @@ class App {
     }
     // Always shrink on startup — fan menu starts closed
     this._shrinkWindow();
-
-    listen('config-changed', async () => {
-      try {
-        const config = await api.getCategories();
-        if (config) {
-          this.categories = config.categories || [];
-        }
-        this._updateBallDisplay();
-      } catch (e) { /* ignore */ }
-    });
   }
 
   _setupEventListeners() {
@@ -84,6 +75,12 @@ class App {
 
     const fan = document.getElementById('fan-container');
     fan.addEventListener('mouseleave', () => this._onFanLeave());
+    fan.addEventListener('mouseenter', () => {
+      if (this._fanLeaveTimeout) {
+        clearTimeout(this._fanLeaveTimeout);
+        this._fanLeaveTimeout = null;
+      }
+    });
 
     this.ball.addEventListener('mousedown', (e) => {
       if (e.button === 0) {
@@ -92,21 +89,32 @@ class App {
     });
 
     this.ball.addEventListener('click', (e) => {
-      if (e.button !== 0) return;
       e.stopPropagation();
       this._onBallClick();
     });
 
-    this.ball.addEventListener('contextmenu', async (e) => {
+    this.ball.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      e.stopPropagation();
-      try {
-        await api.showContextMenu(e.clientX, e.clientY);
-      } catch (err) { /* ignore */ }
+      this._showContextMenu(e.clientX, e.clientY);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#context-menu')) {
+        this._hideContextMenu();
+      }
+    });
+
+    document.getElementById('ctx-quit').addEventListener('click', () => {
+      this._onQuitApp();
     });
   }
 
   _onBallHover() {
+    if (this._ballLeaveTimeout) {
+      clearTimeout(this._ballLeaveTimeout);
+      this._ballLeaveTimeout = null;
+    }
+
     if (this.state === State.RUNNING || this.state === State.PAUSED) {
       this._showTimerMenu();
     } else if (
@@ -119,9 +127,11 @@ class App {
   }
 
   _onBallLeave() {
-    setTimeout(() => {
+    this._ballLeaveTimeout = setTimeout(() => {
+      this._ballLeaveTimeout = null;
       const fan = document.getElementById('fan-container');
-      if (fan && fan.matches(':hover')) return;
+      const ball = document.getElementById('ball');
+      if ((fan && fan.matches(':hover')) || (ball && ball.matches(':hover'))) return;
 
       if (this.state === State.MENU_LEVEL_1 || this.state === State.MENU_LEVEL_2) {
         this.fanMenu.hide();
@@ -135,7 +145,8 @@ class App {
   }
 
   _onFanLeave() {
-    setTimeout(() => {
+    this._fanLeaveTimeout = setTimeout(() => {
+      this._fanLeaveTimeout = null;
       const ball = document.getElementById('ball');
       if (ball && ball.matches(':hover')) return;
 
@@ -180,6 +191,31 @@ class App {
     } catch (e) { /* ignore */ }
   }
 
+  _showContextMenu(x, y) {
+    const menu = document.getElementById('context-menu');
+    // Position within window coordinates
+    const rect = document.getElementById('app').getBoundingClientRect();
+    const relX = x - rect.left;
+    const relY = y - rect.top;
+    menu.style.left = relX + 'px';
+    menu.style.top = relY + 'px';
+    menu.style.display = 'block';
+  }
+
+  _hideContextMenu() {
+    document.getElementById('context-menu').style.display = 'none';
+  }
+
+  async _onQuitApp() {
+    this._hideContextMenu();
+    this._stopTimerDisplay();
+    try {
+      await api.quitApp();
+    } catch (err) {
+      console.error('Failed to quit:', err);
+    }
+  }
+
   _onBallClick() {
     // Allow starting timer when a task is selected, regardless of menu state
     if (this.selectedCategoryId) {
@@ -213,11 +249,10 @@ class App {
     this.state = State.MENU_LEVEL_2;
     this.currentCategory = category;
 
-    const tasks = category.children || [];
-    const items = tasks.map((t, i) => ({
+    const items = (category.children || []).map((t) => ({
       id: t.id,
       name: t.name,
-      color: this._shadeColor(category.color, i, tasks.length),
+      color: category.color,
     }));
 
     this.fanMenu.show(items, {
@@ -392,7 +427,6 @@ class App {
   _updateBallDisplay() {
     const app = document.getElementById('app');
     app.classList.remove('phase-running', 'phase-paused', 'phase-selected');
-    this._clearCategoryColor();
 
     switch (this.state) {
       case State.RUNNING:
@@ -407,10 +441,6 @@ class App {
         app.classList.add('phase-selected');
         this.ballLabel.classList.remove('timer-text');
         this._updateSelectedLabel();
-        {
-          const cat = this.categories.find((c) => c.id === this.selectedCategoryId);
-          if (cat) this._applyCategoryColor(cat.color);
-        }
         break;
       default:
         this.ballLabel.classList.remove('timer-text');
@@ -427,77 +457,6 @@ class App {
       }
     } catch (err) { /* ignore */ }
   }
-
-  _shadeColor(hex, index, total) {
-    const t = total <= 1 ? 0 : index / (total - 1);
-    const factor = 0.22 * (1 - 2 * t);
-    return this._adjustLightness(hex, factor);
-  }
-
-  _adjustLightness(hex, factor) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-
-    const hsl = this._rgbToHsl(r, g, b);
-    hsl[2] = Math.min(1, Math.max(0, hsl[2] + factor));
-
-    const [nr, ng, nb] = this._hslToRgb(hsl[0], hsl[1], hsl[2]);
-    return '#' + [nr, ng, nb].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
-  }
-
-  _rgbToHsl(r, g, b) {
-    const nr = r / 255, ng = g / 255, nb = b / 255;
-    const max = Math.max(nr, ng, nb), min = Math.min(nr, ng, nb);
-    let h = 0, s = 0;
-    const l = (max + min) / 2;
-
-    if (max !== min) {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      if (max === nr) h = ((ng - nb) / d + (ng < nb ? 6 : 0)) / 6;
-      else if (max === ng) h = ((nb - nr) / d + 2) / 6;
-      else h = ((nr - ng) / d + 4) / 6;
-    }
-    return [h, s, l];
-  }
-
-  _hslToRgb(h, s, l) {
-    const hue2rgb = (p, q, t) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1 / 6) return p + (q - p) * 6 * t;
-      if (t < 1 / 2) return q;
-      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-      return p;
-    };
-
-    if (s === 0) return [l * 255, l * 255, l * 255];
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    return [
-      hue2rgb(p, q, h + 1 / 3) * 255,
-      hue2rgb(p, q, h) * 255,
-      hue2rgb(p, q, h - 1 / 3) * 255,
-    ];
-  }
-
-  _applyCategoryColor(hex) {
-    const darkHex = this._adjustLightness(hex, -0.18);
-    const face = document.getElementById('ball-face');
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    face.style.background = `linear-gradient(135deg, ${hex} 0%, ${darkHex} 100%)`;
-    face.style.boxShadow = `0 4px 20px rgba(${r},${g},${b},0.4), 0 2px 8px rgba(0,0,0,0.15), inset 0 2px 4px rgba(255,255,255,0.2)`;
-  }
-
-  _clearCategoryColor() {
-    const face = document.getElementById('ball-face');
-    face.style.background = '';
-    face.style.boxShadow = '';
-  }
-
 }
 
 window.addEventListener('DOMContentLoaded', () => {

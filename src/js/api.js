@@ -32,9 +32,6 @@ export const api = {
   endTimer: () => safeInvoke('end_timer'),
   getElapsed: () => safeInvoke('get_elapsed'),
   getTimerStatus: () => safeInvoke('get_timer_status'),
-
-  // App
-  showContextMenu: (x, y) => safeInvoke('show_context_menu', { x, y }),
   quitApp: () => safeInvoke('quit_app'),
 
   // Dashboard

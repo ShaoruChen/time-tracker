@@ -1,8 +1,8 @@
 use crate::db::Database;
 use crate::models::Session;
-use crate::timer::TimerState;
+use crate::timer::{TimerPhase, TimerState};
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 #[tauri::command]
 pub fn start_timer(
@@ -79,6 +79,24 @@ pub fn get_timer_status(
         selected_label: timer.selected_label.clone(),
         active_session_id: timer.active_session.as_ref().map(|s| s.id.clone()),
     })
+}
+
+#[tauri::command]
+pub fn quit_app(
+    timer: State<'_, Mutex<TimerState>>,
+    db: State<'_, Database>,
+    app: AppHandle,
+) -> Result<(), String> {
+    let mut timer = timer.lock().map_err(|e| format!("锁定时器失败: {}", e))?;
+    if timer.phase != TimerPhase::Idle {
+        let (session_opt, total_ms) = timer.end();
+        if let Some(session) = session_opt {
+            let now = chrono::Utc::now().to_rfc3339();
+            let _ = db.update_session_end(&session.id, &now, total_ms, "completed");
+        }
+    }
+    app.exit(0);
+    Ok(())
 }
 
 #[derive(serde::Serialize)]

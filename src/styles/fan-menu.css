@@ -12,6 +12,7 @@
 
 #fan-container.visible {
   opacity: 1;
+  pointer-events: auto;
 }
 
 #fan-container svg path {
