@@ -82,7 +82,7 @@ function renderDailyChart(data) {
       datasets: [{
         label: '小时',
         data: values,
-        backgroundColor: (THEMES[currentTheme] || THEMES['indigo'])[0],
+        backgroundColor: (THEMES[currentTheme] || THEMES['verdant'])[0],
         borderRadius: 4,
       }],
     },
@@ -112,7 +112,7 @@ function renderCategoryChart(data) {
 
   const labels = data.map((d) => d.category_name);
   const values = data.map((d) => d.total_ms);
-  const colors = THEMES[currentTheme] || THEMES['indigo'];
+  const colors = THEMES[currentTheme] || THEMES['verdant'];
 
   categoryChart = new Chart(ctx, {
     type: 'doughnut',
@@ -193,13 +193,14 @@ function toggleConfigEditor() {
 
 let _editorConfig = null;
 
-// Theme palettes
+// Theme palettes — light to dark
 const THEMES = {
-  indigo: ['#667eea', '#45B7D1', '#4ECDC4', '#a8e063', '#f5a623', '#f5576c'],
-  sunset: ['#f5576c', '#e8965b', '#f5a623', '#f093fb', '#c44d6e', '#ffd89b'],
-  aurora: ['#7c3aed', '#06b6d4', '#10b981', '#6366f1', '#f59e0b', '#ec4899'],
+  verdant:    ['#2D6A4F', '#E07A5F', '#F4A261', '#81B29A', '#52796F', '#E9C46A'],
+  terracotta: ['#E76F51', '#F4A261', '#E9C46A', '#264653', '#2A9D8F', '#E5989B'],
+  neon:       ['#C084FC', '#22D3EE', '#FB7185', '#34D399', '#FBBF24', '#F472B6'],
+  nocturne:   ['#6366F1', '#0EA5E9', '#D946EF', '#10B981', '#F59E0B', '#F43F5E'],
 };
-let currentTheme = 'indigo';
+let currentTheme = 'verdant';
 
 function _themeColor(index) {
   const colors = THEMES[currentTheme];

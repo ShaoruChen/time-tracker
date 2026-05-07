@@ -2,6 +2,7 @@ import { api } from './api.js';
 import { FanMenu } from './fan-menu.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { PhysicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
+import { listen } from '@tauri-apps/api/event';
 
 const State = {
   IDLE: 'idle',
@@ -42,6 +43,7 @@ class App {
       const config = await api.getCategories();
       if (config) {
         this.categories = config.categories || [];
+        this._applyBallFaceColor();
       }
 
       const status = await api.getTimerStatus();
@@ -63,6 +65,18 @@ class App {
     }
     // Always shrink on startup — fan menu starts closed
     this._shrinkWindow();
+
+    // Listen for config changes from dashboard
+    listen('config-changed', async () => {
+      try {
+        const config = await api.getCategories();
+        if (config) {
+          this.categories = config.categories || [];
+          this._applyBallFaceColor();
+        }
+        this._updateBallDisplay();
+      } catch (e) { /* ignore */ }
+    });
   }
 
   _setupEventListeners() {
@@ -189,6 +203,28 @@ class App {
         pos.y + offset,
       ));
     } catch (e) { /* ignore */ }
+  }
+
+  _darkenColor(hex, amount) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const dr = Math.round(r * (1 - amount));
+    const dg = Math.round(g * (1 - amount));
+    const db = Math.round(b * (1 - amount));
+    return '#' + [dr, dg, db].map((v) => Math.max(0, v).toString(16).padStart(2, '0')).join('');
+  }
+
+  _applyBallFaceColor() {
+    const face = document.getElementById('ball-face');
+    if (!face || this.categories.length === 0) return;
+    const color = this.categories[0].color || '#2D6A4F';
+    const dark = this._darkenColor(color, 0.35);
+    const r = parseInt(color.slice(1, 3), 16);
+    const g = parseInt(color.slice(3, 5), 16);
+    const b = parseInt(color.slice(5, 7), 16);
+    face.style.background = `linear-gradient(135deg, ${color} 0%, ${dark} 100%)`;
+    face.style.boxShadow = `0 4px 20px rgba(${r},${g},${b},0.4), 0 2px 8px rgba(0,0,0,0.15), inset 0 2px 4px rgba(255,255,255,0.2)`;
   }
 
   _showContextMenu(x, y) {
