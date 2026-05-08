@@ -67,3 +67,17 @@ pub fn export_csv(
 ) -> Result<String, String> {
     db.export_csv(&date_from, &date_to)
 }
+
+#[tauri::command]
+pub fn delete_session(db: State<'_, Database>, id: String) -> Result<(), String> {
+    db.delete_session(&id)
+}
+
+#[tauri::command]
+pub fn update_session_duration(
+    db: State<'_, Database>,
+    id: String,
+    duration_ms: i64,
+) -> Result<(), String> {
+    db.update_session_duration(&id, duration_ms)
+}

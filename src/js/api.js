@@ -46,4 +46,7 @@ export const api = {
     safeInvoke('get_category_summary', { dateFrom, dateTo }),
   exportCsv: (dateFrom, dateTo) =>
     safeInvoke('export_csv', { dateFrom, dateTo }),
+  deleteSession: (id) => safeInvoke('delete_session', { id }),
+  updateSessionDuration: (id, durationMs) =>
+    safeInvoke('update_session_duration', { id, durationMs }),
 };

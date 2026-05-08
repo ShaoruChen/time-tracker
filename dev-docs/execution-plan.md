@@ -314,3 +314,42 @@ Events:
 | 扇形 CSS 实现复杂度高 | 菜单动画 buggy | 退化方案: 简单圆形扩散菜单（项目排列为围绕球体的圆点） |
 | macOS 睡眠导致计时不准 | 数据偏差 | 双重计时: Instant + SystemTime 互校验 |
 | Tauri v2 API 不稳定 | 构建失败 | 锁定版本，参考官方示例 |
+
+---
+
+## Debug Log: Dashboard 记录删除/修改
+
+日期: 2026-05-07
+
+### 问题现象
+
+- Dashboard 的「计时记录」行菜单可以打开，但点击「删除」后没有弹出确认框，UI 也没有移除记录。
+- 点击「修改」最初表现为输入框一闪而过，无法输入新的时长。
+- 后续修复事件链路后，「修改」可正常编辑，但「删除」仍没有原生确认框。
+
+### 排查过程
+
+1. 先验证后端数据库逻辑：`delete_session` 使用 `DELETE FROM sessions WHERE id=?`，`update_session_duration` 使用 `UPDATE sessions SET duration_ms=?`。新增数据库测试证明删除/修改会影响记录查询、每日趋势汇总和分类占比汇总。
+2. 根据「从未看到确认框」判断，删除流程没有进入真正的数据库调用阶段。因为删除函数中确认框之前只有 `if (!id) return` 这一类提前退出条件。
+3. 根据「修改输入框一闪而过」判断，菜单动作已经触发，但同一次菜单点击后续冒泡到 document，被外部点击处理误判为“点击了输入框外部”，立刻调用了取消编辑。
+4. 根据「修改已修好但删除仍无确认框」判断，`sessionId` 传递和菜单动作绑定已恢复，剩余问题集中在 Tauri WebView 中原生 `confirm()` 不可靠。
+
+### Root Cause
+
+- 行菜单是一个全局浮层，不属于具体表格行。它依赖 `dataset.sessionId` 在「点击三点」和「点击菜单项」之间传递状态。只把 id 存在菜单容器上比较脆弱。
+- 菜单动作使用早期指针事件时，后续 document click 会干扰编辑状态。
+- Tauri dashboard WebView 中原生 `window.confirm()` 没有可靠显示，导致删除确认不可见。
+
+### 解决方案
+
+- 显示行菜单时，将当前 `sessionId` 同时写入菜单容器和「修改/删除」按钮自身，点击菜单项时优先从按钮读取 id。
+- 抽出 `normalizeSessionId` 和 `removeSessionById`，统一用字符串比较 session id，避免类型差异导致 UI 列表过滤失败。
+- 菜单动作使用 `pointerup`，并通过 `_skipNextDocumentClick` 跳过同一次点击产生的 document-level 取消逻辑，防止修改输入框一闪而过。
+- 删除确认改为页面内自定义确认弹层，不再依赖原生 `confirm()`。
+- 删除确认后先更新前端 `_allSessions` 并重绘表格，实现 UI 立即移除；数据库删除失败时恢复 UI 并提示错误。
+
+### 验证
+
+- `npm run test:js`: 覆盖 id 归一化和前端 session 列表删除。
+- `npm run build`: 验证 dashboard 前端可构建。
+- `cargo test --manifest-path src-tauri/Cargo.toml`: 覆盖删除/修改后数据库查询和汇总数据变化。

@@ -123,6 +123,7 @@ header h1 {
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  overflow: hidden;
 }
 
 .chart-container h3 {
@@ -133,7 +134,7 @@ header h1 {
 }
 
 .chart-container canvas {
-  max-height: 260px;
+  max-height: 240px;
 }
 
 #sessions-section {
@@ -494,6 +495,143 @@ header h1 {
   font-size: 13px;
   color: #666;
   min-width: 60px;
+  text-align: center;
+}
+
+/* Row actions */
+.actions-cell {
+  width: 40px;
+  text-align: center;
+  position: relative;
+}
+
+.row-dots {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #aaa;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  user-select: none;
+}
+
+#sessions-table tbody tr:hover .row-dots {
+  opacity: 1;
+}
+
+.row-dots:hover {
+  color: #555;
+  background: #e8e8e8;
+}
+
+/* Row dropdown menu */
+.row-menu {
+  position: fixed;
+  min-width: 100px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 1000;
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.row-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #333;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+
+.row-menu-item:hover {
+  background: #f5f6fa;
+}
+
+.row-menu-item-danger {
+  color: #e74c3c;
+}
+
+.row-menu-item-danger:hover {
+  background: #fdf0ee;
+}
+
+/* Delete confirmation */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(45, 52, 54, 0.18);
+}
+
+.confirm-dialog {
+  width: min(320px, calc(100vw - 48px));
+  padding: 20px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.18);
+}
+
+.confirm-dialog p {
+  margin: 0 0 18px;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.confirm-actions button {
+  padding: 7px 16px;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.confirm-cancel {
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #555;
+}
+
+.confirm-delete {
+  border: 1px solid #e74c3c;
+  background: #e74c3c;
+  color: #fff;
+}
+
+/* Inline duration edit */
+.duration-edit-input {
+  width: 80px;
+  padding: 4px 8px;
+  border: 1px solid #667eea;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(102,126,234,0.2);
   text-align: center;
 }
 

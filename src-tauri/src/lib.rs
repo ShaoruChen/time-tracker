@@ -60,6 +60,8 @@ pub fn run() {
             commands::dashboard_cmd::get_daily_stacked,
             commands::dashboard_cmd::get_category_summary,
             commands::dashboard_cmd::export_csv,
+            commands::dashboard_cmd::delete_session,
+            commands::dashboard_cmd::update_session_duration,
             commands::timer_cmd::quit_app,
         ])
         .run(tauri::generate_context!())

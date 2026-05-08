@@ -1,4 +1,5 @@
 import { api } from './api.js';
+import { normalizeSessionId, removeSessionById } from './dashboard-row-actions.js';
 import Chart from 'chart.js/auto';
 
 let dailyChart = null;
@@ -6,6 +7,9 @@ let categoryChart = null;
 let _allSessions = [];
 let _sessionPage = 0;
 const PAGE_SIZE = 20;
+let _editingSessionId = null;
+let _skipNextDocumentClick = false;
+let _confirmDialogEl = null;
 
 function formatMs(ms) {
   const totalMin = ms / 60000;
@@ -18,6 +22,25 @@ function formatMs(ms) {
 
 function formatMsDecimal(ms) {
   return (ms / 3600000).toFixed(1);
+}
+
+function formatDurationInput(ms) {
+  const h = Math.floor(ms / 3600000);
+  const m = Math.round((ms % 3600000) / 60000);
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
+
+function parseDurationInput(str) {
+  const s = str.trim();
+  const fullMatch = s.match(/^(\d+)\s*h\s*(\d+)\s*m?$/i);
+  if (fullMatch) return parseInt(fullMatch[1]) * 3600000 + parseInt(fullMatch[2]) * 60000;
+  const hMatch = s.match(/^(\d+)\s*h$/i);
+  if (hMatch) return parseInt(hMatch[1]) * 3600000;
+  const mMatch = s.match(/^(\d+)\s*m$/i);
+  if (mMatch) return parseInt(mMatch[1]) * 60000;
+  return null;
 }
 
 function getDateRange() {
@@ -198,6 +221,11 @@ function renderSessionsPage() {
   const empty = document.getElementById('empty-state');
   const pagination = document.getElementById('pagination');
 
+  const totalPages = Math.ceil((_allSessions || []).length / PAGE_SIZE);
+  if (totalPages > 0 && _sessionPage >= totalPages) {
+    _sessionPage = totalPages - 1;
+  }
+
   if (!_allSessions || _allSessions.length === 0) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
@@ -206,7 +234,6 @@ function renderSessionsPage() {
   }
 
   empty.style.display = 'none';
-  const totalPages = Math.ceil(_allSessions.length / PAGE_SIZE);
   const start = _sessionPage * PAGE_SIZE;
   const page = _allSessions.slice(start, start + PAGE_SIZE);
 
@@ -217,13 +244,16 @@ function renderSessionsPage() {
     const dateStr = (d) => d ? d.toLocaleDateString('zh-CN') : '-';
 
     return `
-      <tr>
+      <tr data-session-id="${s.id}">
         <td>${dateStr(startTime)}</td>
         <td>${s.category_name || '-'}</td>
         <td>${s.task_name || '-'}</td>
         <td>${timeStr(startTime)}</td>
         <td>${timeStr(endTime)}</td>
-        <td>${formatMs(s.duration_ms)}</td>
+        <td class="duration-cell" data-duration-ms="${s.duration_ms}">${formatMs(s.duration_ms)}</td>
+        <td class="actions-cell">
+          <span class="row-dots" data-session-id="${s.id}">⋯</span>
+        </td>
       </tr>
     `;
   }).join('');
@@ -419,6 +449,217 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// --- Row action menu ---
+let _rowMenuEl = null;
+
+function _buildRowMenu() {
+  if (_rowMenuEl) return;
+
+  const menu = document.createElement('div');
+  menu.id = 'row-menu';
+  menu.className = 'row-menu';
+  menu.style.display = 'none';
+
+  const editBtn = document.createElement('button');
+  editBtn.className = 'row-menu-item';
+  editBtn.dataset.action = 'edit';
+  editBtn.textContent = '修改';
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'row-menu-item row-menu-item-danger';
+  deleteBtn.dataset.action = 'delete';
+  deleteBtn.textContent = '删除';
+
+  const handleMenuAction = (e) => {
+    const item = e.target.closest('.row-menu-item');
+    if (!item) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const action = item.dataset.action;
+    const id = item.dataset.sessionId || _rowMenuEl?.dataset.sessionId;
+    hideRowMenu();
+    _skipNextDocumentClick = true;
+    if (action === 'delete') _rowActionDelete(id);
+    else if (action === 'edit') _rowActionEdit(id);
+  };
+
+  menu.addEventListener('pointerup', handleMenuAction);
+  menu.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  menu.appendChild(editBtn);
+  menu.appendChild(deleteBtn);
+  document.body.appendChild(menu);
+  _rowMenuEl = menu;
+}
+
+function hideRowMenu() {
+  if (_rowMenuEl) _rowMenuEl.style.display = 'none';
+}
+
+function confirmAction(message) {
+  return new Promise((resolve) => {
+    if (_confirmDialogEl) _confirmDialogEl.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-dialog" role="dialog" aria-modal="true">
+        <p>${_esc(message)}</p>
+        <div class="confirm-actions">
+          <button class="confirm-cancel" type="button">取消</button>
+          <button class="confirm-delete" type="button">删除</button>
+        </div>
+      </div>
+    `;
+
+    const cleanup = (result) => {
+      overlay.remove();
+      if (_confirmDialogEl === overlay) _confirmDialogEl = null;
+      resolve(result);
+    };
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.closest('.confirm-cancel')) {
+        cleanup(false);
+      } else if (e.target.closest('.confirm-delete')) {
+        cleanup(true);
+      }
+    });
+
+    overlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') cleanup(false);
+      if (e.key === 'Enter') cleanup(true);
+    });
+
+    document.body.appendChild(overlay);
+    _confirmDialogEl = overlay;
+    overlay.querySelector('.confirm-delete').focus();
+  });
+}
+
+function showRowMenu(dotsBtn, sessionId) {
+  if (!_rowMenuEl) return;
+  const normalizedId = normalizeSessionId(sessionId);
+  if (!normalizedId) return;
+  _rowMenuEl.dataset.sessionId = normalizedId;
+  _rowMenuEl.querySelectorAll('.row-menu-item').forEach((item) => {
+    item.dataset.sessionId = normalizedId;
+  });
+  const rect = dotsBtn.getBoundingClientRect();
+  _rowMenuEl.style.position = 'fixed';
+  _rowMenuEl.style.top = `${rect.bottom + 4}px`;
+  _rowMenuEl.style.left = '0px';
+  _rowMenuEl.style.display = 'block';
+  // measure after display to get real width, then adjust position
+  let left = rect.right - _rowMenuEl.offsetWidth;
+  if (left < 8) left = 8;
+  _rowMenuEl.style.left = `${left}px`;
+}
+
+// Document-level delegation for showing menu and dismissing
+document.addEventListener('click', (e) => {
+  if (_skipNextDocumentClick) {
+    _skipNextDocumentClick = false;
+    return;
+  }
+
+  const dotsBtn = e.target.closest('.row-dots');
+  if (dotsBtn) {
+    e.stopPropagation();
+    showRowMenu(dotsBtn, dotsBtn.dataset.sessionId);
+    return;
+  }
+
+  // Click outside menu -> dismiss
+  if (_rowMenuEl && _rowMenuEl.style.display === 'block' && !e.target.closest('#row-menu')) {
+    hideRowMenu();
+  }
+
+  // Click outside edit input -> cancel edit
+  if (_editingSessionId && !e.target.closest('.duration-edit-input')) {
+    cancelEditDuration();
+  }
+});
+
+function removeSessionFromUi(id) {
+  const normalizedId = normalizeSessionId(id);
+  if (!normalizedId) return;
+  _allSessions = removeSessionById(_allSessions, normalizedId);
+  document.querySelector(`tr[data-session-id="${CSS.escape(normalizedId)}"]`)?.remove();
+  renderSessionsPage();
+}
+
+async function _rowActionDelete(id) {
+  const normalizedId = normalizeSessionId(id);
+  if (!normalizedId) return;
+  if (!(await confirmAction('确认删除该记录？此操作不可撤销。'))) return;
+
+  const previousSessions = [..._allSessions];
+  const previousPage = _sessionPage;
+  removeSessionFromUi(normalizedId);
+
+  try {
+    await api.deleteSession(normalizedId);
+    await refreshAll();
+  } catch (err) {
+    _allSessions = previousSessions;
+    _sessionPage = previousPage;
+    renderSessionsPage();
+    console.error('Failed to delete session:', err);
+    alert('删除失败: ' + (typeof err === 'string' ? err : err.message || '未知错误'));
+  }
+}
+
+function _rowActionEdit(id) {
+  const normalizedId = normalizeSessionId(id);
+  if (!normalizedId) return;
+  const row = document.querySelector(`tr[data-session-id="${CSS.escape(normalizedId)}"]`);
+  if (!row) return;
+  const cell = row.querySelector('.duration-cell');
+  if (!cell) return;
+  const currentMs = parseInt(cell.dataset.durationMs) || 0;
+  const currentText = formatDurationInput(currentMs);
+  _editingSessionId = normalizedId;
+  cell.innerHTML = `<input type="text" class="duration-edit-input" value="${_esc(currentText)}" />`;
+  const input = cell.querySelector('.duration-edit-input');
+  input.focus();
+  input.select();
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      saveEditDuration(normalizedId, input.value);
+    } else if (ev.key === 'Escape') {
+      ev.preventDefault();
+      cancelEditDuration();
+    }
+  });
+}
+
+async function saveEditDuration(id, rawValue) {
+  const ms = parseDurationInput(rawValue);
+  if (ms === null || ms < 0) {
+    alert('格式错误，请输入如 "2h 30m" 或 "1h" 或 "45m" 的格式');
+    return;
+  }
+  try {
+    await api.updateSessionDuration(id, ms);
+    _editingSessionId = null;
+    await refreshAll();
+  } catch (err) {
+    console.error('Failed to update session duration:', err);
+    alert('更新失败: ' + (typeof err === 'string' ? err : err.message || '未知错误'));
+  }
+}
+
+function cancelEditDuration() {
+  if (!_editingSessionId) return;
+  _editingSessionId = null;
+  renderSessionsPage();
+}
+
 // Re-index category cards after deletion
 function _reindexCategories() {
   const cards = document.querySelectorAll('.category-card');
@@ -521,6 +762,7 @@ async function exportCsv() {
 // Init
 window.addEventListener('DOMContentLoaded', () => {
   setDefaultDates();
+  _buildRowMenu();
   initTheme();
 
   document.getElementById('btn-refresh').addEventListener('click', refreshAll);
