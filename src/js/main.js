@@ -311,12 +311,12 @@ class App {
       this.fanMenu.show([
         { id: 'resume', name: '继续', color: '#56ab2f' },
         { id: 'end', name: '结束', color: '#f5576c' },
-      ]);
+      ], { backLabel: 'Dashboard', backColor: '#888' });
     } else {
       this.fanMenu.show([
         { id: 'pause', name: '暂停', color: '#ffd89b' },
         { id: 'end', name: '结束', color: '#f5576c' },
-      ]);
+      ], { backLabel: 'Dashboard', backColor: '#888' });
     }
   }
 
@@ -355,6 +355,10 @@ class App {
       try { await api.selectTask(this.currentCategory.id, id); } catch (e) { /* ignore */ }
       this._updateBallDisplay();
     } else if (this.state === State.TIMER_MENU) {
+      if (isBack) {
+        try { await api.openDashboard(); } catch (e) { /* ignore */ }
+        return;
+      }
       if (id === 'pause') {
         await this._pauseTimer();
       } else if (id === 'resume') {

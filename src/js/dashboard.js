@@ -3,6 +3,9 @@ import Chart from 'chart.js/auto';
 
 let dailyChart = null;
 let categoryChart = null;
+let _allSessions = [];
+let _sessionPage = 0;
+const PAGE_SIZE = 20;
 
 function formatMs(ms) {
   const totalMin = ms / 60000;
@@ -182,36 +185,54 @@ async function loadSessions() {
   const { from, to } = getDateRange();
   try {
     const sessions = await api.getSessions(from, to);
-    const tbody = document.getElementById('sessions-tbody');
-    const empty = document.getElementById('empty-state');
-
-    if (!sessions || sessions.length === 0) {
-      tbody.innerHTML = '';
-      empty.style.display = 'block';
-      return;
-    }
-
-    empty.style.display = 'none';
-    tbody.innerHTML = sessions.map((s) => {
-      const startTime = s.start_time ? new Date(s.start_time) : null;
-      const endTime = s.end_time ? new Date(s.end_time) : null;
-      const timeStr = (d) => d ? d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '-';
-      const dateStr = (d) => d ? d.toLocaleDateString('zh-CN') : '-';
-
-      return `
-        <tr>
-          <td>${dateStr(startTime)}</td>
-          <td>${s.category_name || '-'}</td>
-          <td>${s.task_name || '-'}</td>
-          <td>${timeStr(startTime)}</td>
-          <td>${timeStr(endTime)}</td>
-          <td>${formatMs(s.duration_ms)}</td>
-        </tr>
-      `;
-    }).join('');
+    _allSessions = sessions || [];
+    _sessionPage = 0;
+    renderSessionsPage();
   } catch (err) {
     console.error('Failed to load sessions:', err);
   }
+}
+
+function renderSessionsPage() {
+  const tbody = document.getElementById('sessions-tbody');
+  const empty = document.getElementById('empty-state');
+  const pagination = document.getElementById('pagination');
+
+  if (!_allSessions || _allSessions.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    pagination.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  const totalPages = Math.ceil(_allSessions.length / PAGE_SIZE);
+  const start = _sessionPage * PAGE_SIZE;
+  const page = _allSessions.slice(start, start + PAGE_SIZE);
+
+  tbody.innerHTML = page.map((s) => {
+    const startTime = s.start_time ? new Date(s.start_time) : null;
+    const endTime = s.end_time ? new Date(s.end_time) : null;
+    const timeStr = (d) => d ? d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '-';
+    const dateStr = (d) => d ? d.toLocaleDateString('zh-CN') : '-';
+
+    return `
+      <tr>
+        <td>${dateStr(startTime)}</td>
+        <td>${s.category_name || '-'}</td>
+        <td>${s.task_name || '-'}</td>
+        <td>${timeStr(startTime)}</td>
+        <td>${timeStr(endTime)}</td>
+        <td>${formatMs(s.duration_ms)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  document.getElementById('page-info').textContent =
+    `${_sessionPage + 1} / ${totalPages}`;
+  document.getElementById('btn-prev-page').disabled = _sessionPage <= 0;
+  document.getElementById('btn-next-page').disabled = _sessionPage >= totalPages - 1;
+  pagination.style.display = totalPages <= 1 ? 'none' : 'flex';
 }
 
 async function refreshAll() {
@@ -551,6 +572,21 @@ window.addEventListener('DOMContentLoaded', () => {
     if (e.target.classList.contains('cat-color')) {
       const card = e.target.closest('.category-card');
       if (card) card.style.borderLeftColor = e.target.value;
+    }
+  });
+
+  // Pagination
+  document.getElementById('btn-prev-page').addEventListener('click', () => {
+    if (_sessionPage > 0) {
+      _sessionPage--;
+      renderSessionsPage();
+    }
+  });
+  document.getElementById('btn-next-page').addEventListener('click', () => {
+    const totalPages = Math.ceil(_allSessions.length / PAGE_SIZE);
+    if (_sessionPage < totalPages - 1) {
+      _sessionPage++;
+      renderSessionsPage();
     }
   });
 
