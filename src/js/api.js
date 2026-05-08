@@ -40,6 +40,8 @@ export const api = {
     safeInvoke('get_sessions', { dateFrom, dateTo, categoryId: categoryId ?? null }),
   getDailySummary: (dateFrom, dateTo) =>
     safeInvoke('get_daily_summary', { dateFrom, dateTo }),
+  getDailyStacked: (dateFrom, dateTo) =>
+    safeInvoke('get_daily_stacked', { dateFrom, dateTo }),
   getCategorySummary: (dateFrom, dateTo) =>
     safeInvoke('get_category_summary', { dateFrom, dateTo }),
   exportCsv: (dateFrom, dateTo) =>

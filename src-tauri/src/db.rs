@@ -1,4 +1,4 @@
-use crate::models::{CategorySummary, DailySummary, Session};
+use crate::models::{CategorySummary, DailyCategorySlice, DailySummary, Session};
 use rusqlite::{params, Connection};
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -192,6 +192,40 @@ impl Database {
             summaries.push(row.map_err(|e| format!("读取行失败: {}", e))?);
         }
         Ok(summaries)
+    }
+
+    pub fn query_daily_stacked(
+        &self,
+        date_from: &str,
+        date_to: &str,
+    ) -> Result<Vec<DailyCategorySlice>, String> {
+        let conn = self.conn.lock().map_err(|e| format!("锁数据库失败: {}", e))?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT date(start_time) as d, category_id, category_name, SUM(duration_ms) as total
+                 FROM sessions
+                 WHERE date(start_time) >= ?1 AND date(start_time) <= ?2
+                 AND status = 'completed'
+                 GROUP BY d, category_id ORDER BY d, total DESC",
+            )
+            .map_err(|e| format!("查询失败: {}", e))?;
+
+        let rows = stmt
+            .query_map(params![date_from, date_to], |row| {
+                Ok(DailyCategorySlice {
+                    date: row.get(0)?,
+                    category_id: row.get(1)?,
+                    category_name: row.get(2)?,
+                    total_ms: row.get(3)?,
+                })
+            })
+            .map_err(|e| format!("查询失败: {}", e))?;
+
+        let mut slices = Vec::new();
+        for row in rows {
+            slices.push(row.map_err(|e| format!("读取行失败: {}", e))?);
+        }
+        Ok(slices)
     }
 
     pub fn query_category_summary(

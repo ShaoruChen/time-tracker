@@ -57,6 +57,7 @@ pub fn run() {
             commands::dashboard_cmd::open_dashboard,
             commands::dashboard_cmd::get_sessions,
             commands::dashboard_cmd::get_daily_summary,
+            commands::dashboard_cmd::get_daily_stacked,
             commands::dashboard_cmd::get_category_summary,
             commands::dashboard_cmd::export_csv,
             commands::timer_cmd::quit_app,

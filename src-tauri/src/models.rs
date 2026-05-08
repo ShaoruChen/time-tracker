@@ -43,6 +43,14 @@ pub struct DailySummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DailyCategorySlice {
+    pub date: String,
+    pub category_id: String,
+    pub category_name: String,
+    pub total_ms: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CategorySummary {
     pub category_id: String,
     pub category_name: String,

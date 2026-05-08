@@ -41,8 +41,9 @@ async function loadSummary() {
   const weekStart = new Date(now.getTime() - now.getDay() * 86400000);
 
   try {
-    const [dailyData, catData] = await Promise.all([
+    const [dailyData, stackedData, catData] = await Promise.all([
       api.getDailySummary(from, to),
+      api.getDailyStacked(from, to),
       api.getCategorySummary(from, to),
     ]);
 
@@ -59,8 +60,8 @@ async function loadSummary() {
     document.getElementById('card-week').querySelector('.card-value').textContent = formatMs(weekTotal);
     document.getElementById('card-month').querySelector('.card-value').textContent = formatMs(monthTotal);
 
-    // Daily chart
-    renderDailyChart(dailyData || []);
+    // Daily stacked chart
+    renderDailyChart(stackedData || []);
     // Category chart
     renderCategoryChart(catData || []);
   } catch (err) {
@@ -72,34 +73,70 @@ function renderDailyChart(data) {
   const ctx = document.getElementById('chart-daily').getContext('2d');
   if (dailyChart) dailyChart.destroy();
 
-  const labels = data.map((d) => d.date.slice(5)); // MM-DD
-  const values = data.map((d) => parseFloat(formatMsDecimal(d.total_ms)));
+  if (!data || data.length === 0) return;
+
+  // Unique sorted dates
+  const dateSet = new Set(data.map((d) => d.date));
+  const sortedDates = [...dateSet].sort();
+
+  // Unique categories with total accumulation for sort order
+  const catMap = new Map();
+  for (const d of data) {
+    if (!catMap.has(d.category_id)) {
+      catMap.set(d.category_id, { id: d.category_id, name: d.category_name, total: 0 });
+    }
+  }
+
+  // Build lookup: date -> category_id -> hours
+  const lookup = {};
+  for (const d of data) {
+    if (!lookup[d.date]) lookup[d.date] = {};
+    const hours = parseFloat(formatMsDecimal(d.total_ms));
+    lookup[d.date][d.category_id] = hours;
+    catMap.get(d.category_id).total += d.total_ms;
+  }
+
+  // Sort categories by total duration descending (largest at bottom)
+  const catOrder = [...catMap.values()].sort((a, b) => b.total - a.total);
+
+  const colors = THEMES[currentTheme] || THEMES['verdant'];
+  const labels = sortedDates.map((d) => d.slice(5)); // MM-DD
+
+  const datasets = catOrder.map((cat, i) => ({
+    label: cat.name,
+    data: sortedDates.map((date) => lookup[date]?.[cat.id] || 0),
+    backgroundColor: colors[i % colors.length],
+    borderRadius: i === catOrder.length - 1 ? { topLeft: 3, topRight: 3 } : 0,
+    barPercentage: 0.8,
+  }));
 
   dailyChart = new Chart(ctx, {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: '小时',
-        data: values,
-        backgroundColor: (THEMES[currentTheme] || THEMES['verdant'])[0],
-        borderRadius: 4,
-      }],
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 11 }, padding: 16, usePointStyle: true },
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw}h`,
+          },
+        },
       },
       scales: {
+        x: {
+          stacked: true,
+          ticks: { font: { size: 10 } },
+        },
         y: {
+          stacked: true,
           beginAtZero: true,
           title: { display: true, text: '小时' },
           ticks: { font: { size: 11 } },
-        },
-        x: {
-          ticks: { font: { size: 10 } },
         },
       },
     },

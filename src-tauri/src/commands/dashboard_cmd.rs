@@ -1,5 +1,5 @@
 use crate::db::Database;
-use crate::models::{CategorySummary, DailySummary, Session};
+use crate::models::{CategorySummary, DailyCategorySlice, DailySummary, Session};
 use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 #[tauri::command]
@@ -39,6 +39,15 @@ pub fn get_daily_summary(
     date_to: String,
 ) -> Result<Vec<DailySummary>, String> {
     db.query_daily_summary(&date_from, &date_to)
+}
+
+#[tauri::command]
+pub fn get_daily_stacked(
+    db: State<'_, Database>,
+    date_from: String,
+    date_to: String,
+) -> Result<Vec<DailyCategorySlice>, String> {
+    db.query_daily_stacked(&date_from, &date_to)
 }
 
 #[tauri::command]
