@@ -11,17 +11,13 @@ pub fn open_dashboard(app: tauri::AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    let window = WebviewWindowBuilder::new(&app, "dashboard", WebviewUrl::App("dashboard.html".into()))
+    let _window = WebviewWindowBuilder::new(&app, "dashboard", WebviewUrl::App("dashboard.html".into()))
         .title("Time Tracker - Dashboard")
         .inner_size(1000.0, 750.0)
         .resizable(true)
         .min_inner_size(600.0, 500.0)
         .build()
         .map_err(|e| format!("创建窗口失败: {}", e))?;
-
-    // Open devtools in debug mode
-    #[cfg(debug_assertions)]
-    window.open_devtools();
 
     Ok(())
 }
